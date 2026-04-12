@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0c0f12;
+
+  /* Global Colors */
+  --color-primary: #ECEFCA;
+  --color-secondary: #262626;
+  --color-tertiary: #383838;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-primary;
+    
+    /* Ensures smooth rendering on dark backgrounds */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
