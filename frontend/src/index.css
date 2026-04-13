@@ -1,20 +1,80 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0c0f12;
+  --color-background: #141414;
 
   /* Global Colors */
-  --color-primary: #ECEFCA;
-  --color-secondary: #262626;
-  --color-tertiary: #383838;
+  --color-primary: #ebedce;
+  --color-secondary: #2b2b2b;
+  --color-tertiary: #262626;
 }
 
 @layer base {
   body {
     @apply bg-background text-primary;
-    
+
     /* Ensures smooth rendering on dark backgrounds */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  /* Hides arrows in Chrome, Safari, Edge, and Opera */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Hides arrows in Firefox */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
+
+#chatBox::-webkit-scrollbar {
+  width: 5px; /* Makes it thin */
+}
+
+#chatBox::-webkit-scrollbar-track {
+  background: var(--color-secondary); /* #0c0f12 */
+}
+
+#chatBox::-webkit-scrollbar-thumb {
+  background: var(--color-primary); /* #ECEFCA */
+  border-radius: 10px; /* Rounded edges */
+}
+
+/* Optional: Slight hover effect */
+#chatBox::-webkit-scrollbar-thumb:hover {
+  background: #d9dbb8; /* Slightly darker version of primary */
+}
+
+/* For Firefox */
+#chatBox {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) var(--color-secondary);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
 }
