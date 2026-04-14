@@ -25,7 +25,7 @@ function Login() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(form),
-        },
+        }
       );
 
       const data = await res.json();
@@ -45,17 +45,26 @@ function Login() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl h-[600px] bg-secondary rounded-2xl overflow-hidden flex">
+      <div className="w-full max-w-6xl bg-secondary rounded-2xl overflow-hidden flex flex-col md:flex-row">
+
         {/* LEFT SIDE */}
-        <div className="w-1/2 p-10 flex flex-col justify-center">
-          {/* Dummy Logo */}
-          <div className="flex items-center gap-2 mb-6">
-            <img src="/logo.png" className="w-20 h-auto"/>
-            <span className="text-primary font-bold text-2xl mt-5">SYNC</span>
+        <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col justify-center">
+
+          {/* Logo */}
+          <div className="flex items-center gap-2 mb-6 justify-center md:justify-start">
+            <img src="/logo.png" className="w-14 md:w-20 h-auto" />
+            <span className="text-primary font-bold text-xl md:text-2xl mt-2 md:mt-5">
+              SYNC
+            </span>
           </div>
 
-          <h2 className="text-2xl font-bold text-primary mb-2">Welcome Back</h2>
-          <p className="text-gray-400 text-sm mb-6">Login to continue</p>
+          <h2 className="text-xl md:text-2xl font-bold text-primary mb-2 text-center md:text-left">
+            Welcome Back
+          </h2>
+
+          <p className="text-gray-400 text-sm mb-6 text-center md:text-left">
+            Login to continue
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -81,7 +90,7 @@ function Login() {
             </button>
           </form>
 
-          <p className="text-sm text-gray-400 mt-6">
+          <p className="text-sm text-gray-400 mt-6 text-center md:text-left">
             Don’t have an account?{" "}
             <span
               onClick={() => navigate("/register")}
@@ -93,18 +102,18 @@ function Login() {
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="w-1/2 hidden md:block relative overflow-hidden">
-          {/* IMAGE (FULL COVER) */}
+        <div className="hidden md:block w-1/2 relative overflow-hidden">
+          {/* IMAGE */}
           <img
             src="/side.jpg"
             alt="preview"
             className="absolute inset-0 w-full h-full object-cover"
           />
 
-          {/* OVERLAY (for readability) */}
+          {/* OVERLAY */}
           <div className="absolute inset-0 bg-black/60" />
 
-          {/* TEXT ABOVE IMAGE */}
+          {/* TEXT */}
           <div className="relative z-10 flex items-center justify-center h-full text-center px-6">
             <h1 className="text-3xl font-bold text-primary">
               Build focus. Build consistency.

@@ -256,6 +256,12 @@ function Room() {
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
             className="flex-1 bg-tertiary p-3 rounded-xl"
           />
           <button
