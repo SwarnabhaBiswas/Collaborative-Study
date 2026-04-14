@@ -33,7 +33,7 @@ export const register = async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: email.username,
+        username: user.username,
         email: user.email,
       },
     });
@@ -66,7 +66,7 @@ export const login = async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: email.username,
+        username: user.username,
         email: user.email,
       },
     });

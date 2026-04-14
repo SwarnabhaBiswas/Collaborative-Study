@@ -5,89 +5,80 @@ import Message from "../components/Message";
 import TimerInput from "../components/TimerInput";
 import Users from "../components/Users";
 import Notifications from "../components/Notifications";
+import { useAuth } from "../context/AuthContext";
+import { User, Timer } from "lucide-react";
 
 function Room() {
   const { roomId } = useParams();
 
-  //User states
   const [users, setUsers] = useState([]);
-
-  // Chat States
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
 
-  // Timer States
-  const [time, setTime] = useState(1500); // Current seconds left
-  const [initialTime, setInitialTime] = useState(1500); // Total seconds for percentage calc
-  const [durationInput, setDurationInput] = useState(25); // User input in minutes
+  const [time, setTime] = useState(1500);
+  const [initialTime, setInitialTime] = useState(1500);
+  const [durationInput, setDurationInput] = useState(25);
   const [isPaused, setIsPaused] = useState(true);
 
-  //notification
   const [notifications, setNotifications] = useState([]);
 
-  const usernameRef = useRef("User" + Math.floor(Math.random() * 1000));
+  // 🔥 MOBILE SIDEBARS
+  const [showUsers, setShowUsers] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
 
-  const username = usernameRef.current;
+  const { user } = useAuth();
+  const username = user?.username || "Guest";
+
   const chatEndRef = useRef(null);
   const hasJoined = useRef(false);
 
-  // Auto-scroll chat
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // 🔔 Notifications
   useEffect(() => {
     socket.on("notify", (data) => {
       const id = Date.now();
-
       setNotifications((prev) => [...prev, { ...data, id }]);
-      //remove noti
+
       setTimeout(() => {
         setNotifications((prev) => prev.filter((n) => n.id !== id));
       }, 3500);
     });
 
-    return () => {
-      socket.off("notify");
-    };
+    return () => socket.off("notify");
   }, []);
 
+  // 👥 Users
   useEffect(() => {
     socket.on("update_users", (usersList) => {
       setUsers(usersList);
     });
 
-    return () => {
-      socket.off("update_users");
-    };
+    return () => socket.off("update_users");
   }, []);
 
+  // 🚪 Join Room
   useEffect(() => {
     if (hasJoined.current) return;
+    if (!username) return;
 
-    socket.emit("join_room", {
-      roomId,
-      username,
-    });
-
+    socket.emit("join_room", { roomId, username });
     hasJoined.current = true;
-  }, [roomId]);
+  }, [roomId, username]);
 
+  // 💬 Chat + Timer
   useEffect(() => {
-    // Receive Messages
     socket.on("receive_message", (data) => {
       setChat((prev) => [...prev, data]);
     });
 
-    // Receive Timer Updates
-    socket.on(
-      "timer_update",
-      ({ timeLeft, initialTime: serverInitialTime }) => {
-        setTime(timeLeft);
-        setInitialTime(serverInitialTime);
-        setIsPaused(timeLeft <= 0);
-      },
-    );
+    socket.on("timer_update", ({ timeLeft, initialTime }) => {
+      setTime(timeLeft);
+      setInitialTime(initialTime);
+      setIsPaused(timeLeft <= 0);
+    });
 
     return () => {
       socket.off("receive_message");
@@ -95,8 +86,22 @@ function Room() {
     };
   }, []);
 
+  // 📦 Load messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/messages/${roomId}`,
+      );
+      const data = await res.json();
+      setChat(data);
+    };
+
+    fetchMessages();
+  }, [roomId]);
+
   useEffect(scrollToBottom, [chat]);
 
+  // 💬 Send Message
   const sendMessage = () => {
     if (!message.trim()) return;
 
@@ -115,10 +120,12 @@ function Room() {
     setMessage("");
   };
 
-  // Timer Controls
+  // ⏱️ Timer Controls
   const startTimer = () => {
-    const durationInSeconds = durationInput * 60;
-    socket.emit("start_timer", { roomId, duration: durationInSeconds });
+    socket.emit("start_timer", {
+      roomId,
+      duration: durationInput * 60,
+    });
     setIsPaused(false);
   };
 
@@ -139,138 +146,160 @@ function Room() {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  // SVG Circular Math
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
-  // If time is 0 and hasn't started, show empty circle (circumference).
-  // Otherwise, calculate progress.
   const strokeDashoffset =
     initialTime > 0
       ? circumference - (time / initialTime) * circumference
       : circumference;
 
+  // 🔥 REUSABLE TIMER UI
+  const TimerUI = (
+    <>
+      <span className="text-primary font-bold text-3xl mb-4">
+        {showTimer ? "" : "Pomodoro"}
+      </span>
+
+      <div className="relative flex items-center justify-center mb-10">
+        <svg className="transform -rotate-90 w-64 h-64">
+          <circle
+            cx="128"
+            cy="128"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="10"
+            fill="transparent"
+            className={isPaused ? "text-tertiary" : "text-secondary"}
+          />
+          <circle
+            cx="128"
+            cy="128"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="10"
+            fill="transparent"
+            strokeDasharray={circumference}
+            style={{ strokeDashoffset }}
+            strokeLinecap="round"
+            className="text-primary"
+          />
+        </svg>
+
+        <div className="absolute flex flex-col items-center">
+          <h1 className="text-5xl font-black text-primary">
+            {formatTime(time)}
+          </h1>
+          <p className="text-xs text-gray-400">
+            {isPaused ? "Paused" : "Focusing"}
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full max-w-xs space-y-4">
+        <TimerInput value={durationInput} onChange={setDurationInput} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={isPaused ? startTimer : pauseTimer}
+            className={`py-4 rounded-2xl font-bold ${
+              isPaused ? "bg-secondary" : "bg-tertiary"
+            } text-primary`}
+          >
+            {isPaused ? "Start" : "Pause"}
+          </button>
+
+          <button
+            onClick={stopTimer}
+            className="bg-red-800 text-primary py-4 rounded-2xl font-bold"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
-    <div className="bg-background h-screen flex overflow-hidden">
-      <Notifications notifications={notifications}/>
-      {/* LEFT - Sidebar */}
-      <div className="w-80 bg-background p-6 hidden lg:flex flex-col">
-        <h2 className="text-xl font-bold mb-6 text-primary">Users Room</h2>
+    <div className="bg-background h-screen flex overflow-hidden relative">
+      <Notifications notifications={notifications} />
+
+      {/* DESKTOP USERS */}
+      <div className="w-80 hidden lg:flex bg-background p-6 flex-col">
+        <h2 className="text-xl text-primary font-bold mb-6">Users</h2>
         <Users users={users} socket={socket} />
       </div>
 
-      {/* CENTER - Chat Interface */}
-      <div className="flex-1 flex flex-col bg-linear-to-br from-neutral-900 via-[#1b1b1b] to-neutral-800">
-        <div className="p-3 mb-4 border-b border-secondary flex justify-between items-center">
-          <span className="font-bold text-primary uppercase bg-secondary px-2 py-0.5 border border-none rounded-xl">
-            # {roomId}
-          </span>
+      {/* CHAT */}
+      <div className="flex-1 flex flex-col bg-neutral-900">
+        <div className="p-3 border-b border-secondary flex justify-between">
+          <span className="text-primary">#{roomId}</span>
+
+          {/* MOBILE ICONS */}
+          <div className="flex gap-2 lg:hidden">
+            <button onClick={() => setShowUsers(true)}>
+              <User color="#ebedce" size={24} />
+            </button>
+            <button onClick={() => setShowTimer(true)}>
+              <Timer color="#ebedce" size={24} />
+            </button>
+          </div>
         </div>
 
-        <div
-          id="chatBox"
-          className="flex-1 overflow-y-auto mb-4 space-y-2 no-scrollbar"
-        >
-          {chat.map((msg, index) => (
-            <Message key={index} msg={msg} id={index} currentUser={username} />
+        <div className="flex-1 overflow-y-auto p-2">
+          {chat.map((msg, i) => (
+            <Message key={i} msg={msg} currentUser={username} />
           ))}
           <div ref={chatEndRef} />
         </div>
 
-        <div className="pb-4 pr-4 pl-4">
-          <div className="flex gap-2 p-1 ">
-            <input
-              type="text"
-              placeholder="Message your group..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              className="flex-1 px-4 py-3 outline-none text-sm bg-tertiary opacity-80 focus:opacity-100 rounded-2xl shadow-sm"
-            />
-            <button
-              onClick={sendMessage}
-              className="bg-primary text-secondary px-6 py-2 rounded-xl text-sm font-bold hover:opacity-80 transition-all active:scale-95"
-            >
-              Send
-            </button>
-          </div>
+        <div className="p-3 flex gap-2">
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="flex-1 bg-tertiary p-3 rounded-xl"
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-primary text-background px-4 rounded-xl"
+          >
+            Send
+          </button>
         </div>
       </div>
 
-      {/* RIGHT - Timer Controls */}
+      {/* DESKTOP TIMER */}
+      <div className="hidden lg:flex w-96 bg-background p-6 flex-col items-center justify-center">
+        {TimerUI}
+      </div>
+
+      {/* MOBILE USERS */}
       <div
-        className={`bg-background p-8 flex flex-col items-center justify-center `}
+        className={`fixed left-0 top-0 h-full w-72 bg-background z-50 transform ${
+          showUsers ? "translate-x-0" : "-translate-x-full"
+        } transition`}
       >
-        <span className="text-primary font-bold text-3xl">Pomodoro</span>
-        <div className="relative flex items-center justify-center mb-10">
-          {/* SVG Progress Ring */}
-          <svg className="transform -rotate-90 w-64 h-64">
-            <circle
-              cx="128"
-              cy="128"
-              r={radius}
-              stroke="currentColor"
-              strokeWidth="10"
-              fill="transparent"
-              className={isPaused ? "text-tertiary" : "text-secondary"}
-            />
-            <circle
-              cx="128"
-              cy="128"
-              r={radius}
-              stroke="currentColor"
-              strokeWidth="10"
-              fill="transparent"
-              strokeDasharray={circumference}
-              style={{
-                strokeDashoffset: isNaN(strokeDashoffset)
-                  ? circumference
-                  : strokeDashoffset,
-                transition: "stroke-dashoffset 0.5s ease-in-out",
-              }}
-              strokeLinecap="round"
-              className="text-primary"
-            />
-          </svg>
-
-          {/* Digital Counter */}
-          <div className="absolute flex flex-col items-center">
-            <h1 className="text-5xl font-black tracking-tight text-primary">
-              {formatTime(time)}
-            </h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">
-              {isPaused ? "Paused" : "Focusing"}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Panel */}
-        <div className="w-full max-w-xs space-y-4">
-          <TimerInput value={durationInput} onChange={setDurationInput} />
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={isPaused ? startTimer : pauseTimer}
-              className={`py-4 rounded-2xl font-bold transition-all active:scale-95 cursor-pointer ${
-                isPaused
-                  ? "bg-secondary text-primary hover:opacity-80"
-                  : "bg-tertiary text-primary"
-              }`}
-            >
-              {isPaused
-                ? time < durationInput * 60 && time > 0
-                  ? "Resume"
-                  : "Start"
-                : "Pause"}
-            </button>
-            <button
-              onClick={stopTimer}
-              className="bg-red-800 text-primary font-bold cursor-pointer py-4 rounded-2xl hover:opacity-80 transition-all active:scale-95"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
+        <Users users={users} socket={socket} />
       </div>
+
+      {/* MOBILE TIMER */}
+      <div
+        className={`fixed right-0 top-0 h-full w-80 bg-background z-50 transform ${
+          showTimer ? "translate-x-0" : "translate-x-full"
+        } transition`}
+      >
+        <button onClick={() => setShowTimer(false)}></button>
+        {TimerUI}
+      </div>
+      {/* OVERLAY (click outside to close) */}
+      {(showUsers || showTimer) && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => {
+            setShowUsers(false);
+            setShowTimer(false);
+          }}
+        />
+      )}
     </div>
   );
 }

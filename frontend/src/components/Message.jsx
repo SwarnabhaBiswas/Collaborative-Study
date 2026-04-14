@@ -20,7 +20,7 @@ const Message = ({ msg, id, currentUser }) => {
       >
         {/* Username (only for others) */}
         {!isMe && (
-          <span className="text-[#bdbcbb] text-xs mr-2 font-medium">
+          <span className="text-[#bdbcbb] text-[65%] mr-2 font-small">
             {msg.username}
           </span>
         )}

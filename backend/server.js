@@ -6,6 +6,9 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
+
+import Message from "./models/Message.js";
 
 dotenv.config();
 
@@ -23,6 +26,7 @@ const rooms = {}; // presence system
 
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/messages", messageRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend is running");
@@ -39,7 +43,7 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("User Connected", socket.id);
 
-  // ✅ JOIN ROOM (FIXED)
+  //  JOIN ROOM (FIXED)
   socket.on("join_room", ({ roomId, username }) => {
     socket.join(roomId);
 
@@ -67,8 +71,16 @@ io.on("connection", (socket) => {
   });
 
   // 💬 CHAT
-  socket.on("send_message", (data) => {
-    socket.to(data.roomId).emit("receive_message", data);
+  socket.on("send_message", async (data) => {
+    try {
+      // SAVE TO DB
+      await Message.create(data);
+
+      // SEND TO OTHERS
+      socket.to(data.roomId).emit("receive_message", data);
+    } catch (err) {
+      console.log(err);
+    }
   });
 
   // ⏱️ TIMER
