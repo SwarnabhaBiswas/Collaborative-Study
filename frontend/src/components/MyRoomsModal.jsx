@@ -12,23 +12,35 @@ function MyRoomsModal({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // prevent background scroll
+  // Lock background scroll only when open
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "auto";
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const filteredRooms = myRooms
     .filter((room) =>
-      room.roomId.toLowerCase().includes(searchTerm.toLowerCase()),
+      room.roomId.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
+      
       {/* OVERLAY */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+      />
 
       {/* MODAL */}
       <div
@@ -55,11 +67,8 @@ function MyRoomsModal({
           className="w-full mb-4 px-4 py-2 rounded-xl bg-tertiary text-primary outline-none"
         />
 
-        {/* ROOMS LIST */}
-        <div
-          id="chatBox"
-          className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
-        >
+        {/* ROOM LIST */}
+        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
           {filteredRooms.length === 0 ? (
             <p className="text-gray-400 text-sm">No rooms found</p>
           ) : (
@@ -69,7 +78,7 @@ function MyRoomsModal({
               return (
                 <div
                   key={room._id}
-                  className="bg-tertiary px-5 py-3 rounded-full flex justify-between items-center transition"
+                  className="bg-tertiary px-5 py-3 rounded-full flex justify-between items-center"
                 >
                   {/* LEFT */}
                   <div className="flex flex-col items-start">
@@ -77,7 +86,8 @@ function MyRoomsModal({
                       {room.roomId}
                     </span>
                     <span className="text-gray-400 text-xs">
-                      Created · {new Date(room.createdAt).toLocaleString()}
+                      Created ·{" "}
+                      {new Date(room.createdAt).toLocaleString()}
                     </span>
                   </div>
 
@@ -98,7 +108,7 @@ function MyRoomsModal({
                           color: "#ebedce",
                         });
                       }}
-                      className="bg-secondary px-3 py-1 rounded-full text-xs cursor-pointer hover:opacity-80"
+                      className="bg-secondary px-3 py-1 rounded-full text-xs hover:opacity-80 cursor-pointer"
                     >
                       Copy
                     </button>
@@ -106,12 +116,12 @@ function MyRoomsModal({
                     {/* JOIN */}
                     <button
                       onClick={() => navigate(`/room/${room.roomId}`)}
-                      className="bg-secondary px-4 py-1 rounded-full text-sm cursor-pointer hover:opacity-80"
+                      className="bg-secondary px-4 py-1 rounded-full text-sm hover:opacity-80 cursor-pointer"
                     >
                       Join
                     </button>
 
-                    {/* DELETE */}
+                    {/* DELETE (only creator) */}
                     {isCreator && (
                       <button
                         onClick={async () => {
@@ -132,12 +142,12 @@ function MyRoomsModal({
                               {
                                 method: "DELETE",
                                 headers: { Authorization: token },
-                              },
+                              }
                             );
 
                             if (res.ok) {
                               setMyRooms((prev) =>
-                                prev.filter((r) => r._id !== room._id),
+                                prev.filter((r) => r._id !== room._id)
                               );
 
                               Swal.fire({
@@ -149,7 +159,7 @@ function MyRoomsModal({
                             }
                           }
                         }}
-                        className="bg-red-800 px-3 py-1 rounded-full text-sm text-primary cursor-pointer hover:opacity-80"
+                        className="bg-red-800 px-3 py-1 rounded-full text-sm text-primary hover:opacity-80 cursor-pointer"
                       >
                         Delete
                       </button>
@@ -161,9 +171,6 @@ function MyRoomsModal({
           )}
         </div>
       </div>
-
-      {/* CLICK OUTSIDE */}
-      <div className="absolute inset-0" onClick={onClose} />
     </div>
   );
 }
