@@ -43,13 +43,47 @@ export const joinRoom = async (req, res) => {
     }
 
     res.json({
-        message:"Joined room",
-        room,
-    })
-
+      message: "Joined room",
+      room,
+    });
   } catch (e) {
     res.status(500).json({
       message: e.message,
     });
+  }
+};
+
+export const getMyRooms = async (req, res) => {
+  try {
+    const rooms = await Room.find({
+      $or: [{ createdBy: req.user.id }, { users: req.user.id }],
+    });
+
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const deleteRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await Room.findOne({ roomId });
+
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+
+    // only creator can delete
+    if (room.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    await Room.deleteOne({ roomId });
+
+    res.json({ message: "Room deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

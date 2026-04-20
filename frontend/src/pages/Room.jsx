@@ -220,7 +220,7 @@ function Room() {
   );
 
   return (
-    <div className="bg-background h-screen flex overflow-hidden relative">
+    <div className="bg-background h-[100dvh] flex overflow-hidden relative">
       <Notifications notifications={notifications} />
 
       {/* DESKTOP USERS */}
@@ -245,14 +245,14 @@ function Room() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2 min-h-0">
           {chat.map((msg, i) => (
             <Message key={i} msg={msg} currentUser={username} />
           ))}
           <div ref={chatEndRef} />
         </div>
 
-        <div className="p-3 flex gap-2">
+        <div className="p-3 flex gap-2 border-t border-secondary">
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
