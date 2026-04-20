@@ -1,4 +1,4 @@
-# Sync — Collaborative Study Room
+# Sync: Collaborative Study Room
 
 Sync is a real-time study room application where users can join shared spaces, study together using a synchronized Pomodoro timer, and chat live. The goal of the app is simple: make studying feel less isolating and more structured without any flashy components.
 
