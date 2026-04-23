@@ -218,7 +218,7 @@ function Room() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={isPaused ? startTimer : pauseTimer}
-            className={`py-4 rounded-2xl font-bold ${
+            className={`py-4 rounded-2xl font-bold cursor-pointer ${
               isPaused ? "bg-secondary" : "bg-tertiary"
             } text-primary`}
           >
@@ -227,7 +227,7 @@ function Room() {
 
           <button
             onClick={stopTimer}
-            className="bg-red-800 text-primary py-4 rounded-2xl font-bold"
+            className="bg-red-800 text-primary py-4 cursor-pointer rounded-2xl font-bold"
           >
             Reset
           </button>
@@ -247,7 +247,9 @@ function Room() {
       </div>
 
       {/* CHAT */}
-      <div className="flex-1 flex flex-col bg-neutral-900">
+      <div 
+      id="chatBox"
+      className="flex-1 flex flex-col bg-neutral-900">
         <div className="p-3 border-b border-secondary flex justify-between">
           <span className="text-primary">#{roomId}</span>
 
@@ -289,7 +291,7 @@ function Room() {
           />
           <button
             onClick={sendMessage}
-            className="bg-primary text-background px-4 rounded-xl"
+            className="bg-primary text-background px-4 rounded-xl cursor-pointer"
           >
             Send
           </button>
