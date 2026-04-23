@@ -24,6 +24,8 @@ export function AuthProvider({ children }) {
 
   // LOGIN
   const login = (data) => {
+     if (!data?.token || !data?.user) return;
+     
     const bearerToken = `Bearer ${data.token}`;
 
     localStorage.setItem("token", bearerToken);

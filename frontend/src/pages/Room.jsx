@@ -93,7 +93,7 @@ function Room() {
         `${import.meta.env.VITE_API_URL}/api/messages/${roomId}`,
       );
       const data = await res.json();
-      setChat(data);
+      setChat(data.data);
     };
 
     fetchMessages();

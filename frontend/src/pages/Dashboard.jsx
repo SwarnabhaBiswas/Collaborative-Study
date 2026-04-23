@@ -84,7 +84,7 @@ function Dashboard() {
         );
 
         const data = await res.json();
-        setMyRooms(data);
+        setMyRooms(data.data);
       } catch (err) {
         console.log(err);
       }

@@ -35,7 +35,7 @@ export const joinRoom = async (req, res) => {
     const room = await Room.findOne({ roomId });
 
     if (!room) {
-      res.status(404).json({ message: "Invalid room id" });
+      return res.status(404).json({ message: "Invalid room id" });
     }
     if (!room.users.some((id) => id.equals(userId))) {
       room.users.push(userId);
@@ -59,7 +59,11 @@ export const getMyRooms = async (req, res) => {
       $or: [{ createdBy: req.user.id }, { users: req.user.id }],
     });
 
-    res.json(rooms);
+    res.json({
+      success: true,
+      data: rooms,
+    });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

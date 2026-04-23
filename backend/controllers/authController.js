@@ -9,7 +9,7 @@ export const register = async (req, res) => {
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      res.status(400).json({
+      return res.status(400).json({
         message: "User already exists",
       });
     }
@@ -49,7 +49,7 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      res.status(400).json((message = "User does not exist"));
+      return res.status(400).json((message = "User does not exist"));
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

@@ -176,6 +176,10 @@ io.on("connection", (socket) => {
         (user) => user.socketId !== socket.id,
       );
 
+      if (rooms[roomId].length === 0) {
+        delete rooms[roomId];
+      }
+
       io.to(roomId).emit("update_users", rooms[roomId]);
 
       if (user) {
@@ -185,6 +189,16 @@ io.on("connection", (socket) => {
         });
       }
     }
+  });
+});
+
+//centralised error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
   });
 });
 
