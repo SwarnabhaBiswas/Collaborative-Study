@@ -26,11 +26,11 @@ function Room() {
   const [showUsers, setShowUsers] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
 
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const username = user?.username || "Guest";
+  const currentUserId = user?.id;
 
   const chatEndRef = useRef(null);
-  const hasJoined = useRef(false);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -61,12 +61,14 @@ function Room() {
 
   // 🚪 Join Room
   useEffect(() => {
-    if (hasJoined.current) return;
-    if (!username) return;
+    if (!roomId || !user) return;
 
-    socket.emit("join_room", { roomId, username });
-    hasJoined.current = true;
-  }, [roomId, username]);
+    socket.emit("join_room", { roomId });
+
+    return () => {
+      // Optional: emit a leave_room event if backend supports it
+    };
+  }, [roomId, user]);
 
   // 💬 Chat + Timer
   useEffect(() => {
@@ -89,11 +91,26 @@ function Room() {
   // 📦 Load messages
   useEffect(() => {
     const fetchMessages = async () => {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/messages/${roomId}`,
-      );
-      const data = await res.json();
-      setChat(data);
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/messages/${roomId}`,
+          {
+            headers: {
+              Authorization: token,
+            },
+          },
+        );
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setChat(data.data);
+        } else {
+          console.error(data.message);
+        }
+      } catch (err) {
+        console.log(err);
+      }
     };
 
     fetchMessages();
@@ -109,6 +126,7 @@ function Room() {
       roomId,
       message,
       username,
+      senderId: currentUserId,
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -116,7 +134,6 @@ function Room() {
     };
 
     socket.emit("send_message", messageData);
-    setChat((prev) => [...prev, messageData]);
     setMessage("");
   };
 
@@ -246,9 +263,15 @@ function Room() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 min-h-0">
-          {chat.map((msg, i) => (
-            <Message key={i} msg={msg} currentUser={username} />
-          ))}
+          {Array.isArray(chat) &&
+            chat.map((msg, index) => (
+              <Message
+                key={index}
+                msg={msg}
+                id={index}
+                currentUser={currentUserId}
+              />
+            ))}
           <div ref={chatEndRef} />
         </div>
 

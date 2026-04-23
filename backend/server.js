@@ -2,8 +2,12 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
+import helmet from "helmet";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
+import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
+
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
@@ -33,7 +37,13 @@ app.use(
   }),
 );
 
+app.use(helmet());
 app.use(express.json());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -43,6 +53,7 @@ mongoose
 const roomStates = {};
 const rooms = {}; // presence system
 
+app.use("/api/auth", limiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/messages", messageRoutes);
@@ -61,23 +72,42 @@ const io = new Server(server, {
   },
 });
 
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+
+  if (!token) {
+    return next(new Error("Unauthorized"));
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = decoded;
+    next();
+  } catch (e) {
+    next(new Error("Invalid token"));
+  }
+});
+
 io.on("connection", (socket) => {
   console.log("User Connected", socket.id);
 
   //  JOIN ROOM (FIXED)
-  socket.on("join_room", ({ roomId, username }) => {
+  socket.on("join_room", ({ roomId }) => {
     socket.join(roomId);
 
     if (!rooms[roomId]) {
       rooms[roomId] = [];
     }
 
-    // prevent duplicate
-    const exists = rooms[roomId].some((user) => user.socketId === socket.id);
+    const username = socket.user.username;
+    const userId = socket.user.id;
 
-    if (!exists) {
+    // Track every socket connection, even if it's the same user (multi-tab support)
+    const socketExists = rooms[roomId].some((u) => u.socketId === socket.id);
+
+    if (!socketExists) {
       rooms[roomId].push({
         socketId: socket.id,
+        userId: userId,
         username,
       });
     }
@@ -91,14 +121,20 @@ io.on("connection", (socket) => {
     console.log(`${username} joined ${roomId}`);
   });
 
-  // 💬 CHAT
+  // CHAT
   socket.on("send_message", async (data) => {
     try {
-      // SAVE TO DB
-      await Message.create(data);
+      const messageData = {
+        roomId: data.roomId,
+        message: data.message,
+        time: data.time,
+        username: socket.user.username,
+        senderId: socket.user.id,
+      };
 
-      // SEND TO OTHERS
-      socket.to(data.roomId).emit("receive_message", data);
+      await Message.create(messageData);
+
+      io.to(data.roomId).emit("receive_message", messageData);
     } catch (err) {
       console.log(err);
     }
@@ -176,6 +212,10 @@ io.on("connection", (socket) => {
         (user) => user.socketId !== socket.id,
       );
 
+      if (rooms[roomId].length === 0) {
+        delete rooms[roomId];
+      }
+
       io.to(roomId).emit("update_users", rooms[roomId]);
 
       if (user) {
@@ -185,6 +225,16 @@ io.on("connection", (socket) => {
         });
       }
     }
+  });
+});
+
+//centralised error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
   });
 });
 

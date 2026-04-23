@@ -1,7 +1,7 @@
 import React from "react";
 
 const Message = ({ msg, id, currentUser }) => {
-  const isMe = msg.username === currentUser;
+  const isMe = msg.senderId === currentUser;
 
   return (
     <div
@@ -13,9 +13,7 @@ const Message = ({ msg, id, currentUser }) => {
       {/* Message Bubble */}
       <div
         className={`px-4 py-2 rounded-2xl max-w-[75%] shadow-sm border border-white/10 backdrop-blur-md ${
-          isMe
-            ? "bg-primary text-background"
-            : "bg-secondary/20 text-primary"
+          isMe ? "bg-primary text-background" : "bg-secondary/20 text-primary"
         }`}
       >
         {/* Username (only for others) */}
@@ -25,9 +23,7 @@ const Message = ({ msg, id, currentUser }) => {
           </span>
         )}
 
-        <p className="text-md leading-relaxed break-words">
-          {msg.message}
-        </p>
+        <p className="text-md leading-relaxed break-words">{msg.message}</p>
       </div>
 
       {/* Timestamp */}

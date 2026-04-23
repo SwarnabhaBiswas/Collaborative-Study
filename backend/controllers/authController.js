@@ -1,15 +1,24 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { registerSchema, loginSchema } from "../utils/validator.js";
 
 //REGISTER
 export const register = async (req, res) => {
+
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0].message,
+    });
+  }
+  
   try {
     const { email, username, password } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      res.status(400).json({
+      return res.status(400).json({
         message: "User already exists",
       });
     }
@@ -23,12 +32,12 @@ export const register = async (req, res) => {
     });
 
     const token = jwt.sign(
-        { id: user._id }, 
+        { id: user._id, username: user.username }, 
         process.env.JWT_SECRET, {
         expiresIn: "7d",
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "User created",
       token,
       user: {
@@ -38,18 +47,26 @@ export const register = async (req, res) => {
       },
     });
   } catch (e) {
-    res.status(500).json({message : e.message});
+    return res.status(500).json({ message: e.message });
   }
 };
 
 //LOGIN
 export const login = async (req, res) => {
+
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: parsed.error.issues[0].message,
+    });
+  }
+
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
-      res.status(400).json((message = "User does not exist"));
+      return res.status(400).json({ message: "User does not exist" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -57,11 +74,11 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    res.json({
+    return res.json({
       message: "Login successful",
       token,
       user: {
@@ -71,6 +88,6 @@ export const login = async (req, res) => {
       },
     });
   } catch (e) {
-    res.status(500).json(({message : e.message}));
+    return res.status(500).json({ message: e.message });
   }
 };
