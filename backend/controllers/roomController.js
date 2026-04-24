@@ -37,12 +37,12 @@ export const joinRoom = async (req, res) => {
     const room = await Room.findOne({ roomId });
 
     if (!room) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Invalid room id" 
+        message: "Invalid room id",
       });
     }
-    
+
     if (!room.users.some((id) => id.toString() === userId)) {
       room.users.push(userId);
       await room.save();
@@ -65,16 +65,18 @@ export const getMyRooms = async (req, res) => {
   try {
     const rooms = await Room.find({
       $or: [{ createdBy: req.user.id }, { users: req.user.id }],
-    });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.json({
       success: true,
-      data: rooms
+      data: rooms,
     });
   } catch (err) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -86,30 +88,30 @@ export const deleteRoom = async (req, res) => {
     const room = await Room.findOne({ roomId });
 
     if (!room) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Room not found" 
+        message: "Room not found",
       });
     }
 
     // only creator can delete
     if (room.createdBy.toString() !== req.user.id) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: "Unauthorized" 
+        message: "Unauthorized",
       });
     }
 
     await Room.deleteOne({ roomId });
 
-    return res.json({ 
+    return res.json({
       success: true,
-      message: "Room deleted" 
+      message: "Room deleted",
     });
   } catch (err) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };

@@ -20,4 +20,7 @@ const roomSchema= new mongoose.Schema({
 {timestamps:true}
 );
 
+roomSchema.index({ roomId: 1 });
+roomSchema.index({ createdBy: 1 });
+
 export default mongoose.model("Room",roomSchema);

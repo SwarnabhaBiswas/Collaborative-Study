@@ -123,6 +123,8 @@ io.on("connection", (socket) => {
 
   // CHAT
   socket.on("send_message", async (data) => {
+    if (!data.message?.trim()) return;//for empty messages
+
     try {
       const messageData = {
         roomId: data.roomId,
@@ -132,7 +134,13 @@ io.on("connection", (socket) => {
         senderId: socket.user.id,
       };
 
-      await Message.create(messageData);
+      await Message.create({
+        roomId: messageData.roomId,
+        message: messageData.message,
+        time: messageData.time,
+        username: messageData.username,
+        senderId: messageData.senderId,
+      });
 
       io.to(data.roomId).emit("receive_message", messageData);
     } catch (err) {
