@@ -53,6 +53,7 @@ function Room() {
   // 👥 Users
   useEffect(() => {
     socket.on("update_users", (usersList) => {
+      console.log("Received update_users:", usersList);
       setUsers(usersList);
     });
 
@@ -66,7 +67,7 @@ function Room() {
     socket.emit("join_room", { roomId });
 
     return () => {
-      // Optional: emit a leave_room event if backend supports it
+      socket.emit("leave_room", { roomId });
     };
   }, [roomId, user]);
 
@@ -243,7 +244,7 @@ function Room() {
       {/* DESKTOP USERS */}
       <div className="w-80 hidden lg:flex bg-background p-6 flex-col">
         <h2 className="text-xl text-primary font-bold mb-6">Users</h2>
-        <Users users={users} socket={socket} />
+        <Users users={users} socket={socket} currentUserId={currentUserId} />
       </div>
 
       {/* CHAT */}
@@ -309,7 +310,7 @@ function Room() {
           showUsers ? "translate-x-0" : "-translate-x-full"
         } transition`}
       >
-        <Users users={users} socket={socket} />
+        <Users users={users} socket={socket} currentUserId={currentUserId} />
       </div>
 
       {/* MOBILE TIMER */}
