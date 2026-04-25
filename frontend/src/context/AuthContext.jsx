@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { socket } from "../socket";
 
 const AuthContext = createContext();
 
@@ -17,6 +18,10 @@ export function AuthProvider({ children }) {
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      
+      // Update socket auth and connect
+      socket.auth.token = storedToken.split(" ")[1];
+      socket.connect();
     }
 
     setLoading(false);
@@ -24,6 +29,8 @@ export function AuthProvider({ children }) {
 
   // LOGIN
   const login = (data) => {
+    if (!data?.token || !data?.user) return;
+
     const bearerToken = `Bearer ${data.token}`;
 
     localStorage.setItem("token", bearerToken);
@@ -31,6 +38,10 @@ export function AuthProvider({ children }) {
 
     setToken(bearerToken);
     setUser(data.user);
+
+    // Update socket auth and connect
+    socket.auth.token = data.token;
+    socket.connect();
   };
 
   // LOGOUT
@@ -39,6 +50,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
     setUser(null);
     setToken(null);
+    socket.disconnect();
   };
 
   return (
