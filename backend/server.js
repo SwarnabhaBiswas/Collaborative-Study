@@ -95,7 +95,7 @@ io.use((socket, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     // CRITICAL: Ensure you use the same ID key as your login/auth route provides
-    socket.user = decoded; 
+    socket.user = decoded;
     next();
   } catch {
     next(new Error("Invalid token"));
@@ -104,6 +104,7 @@ io.use((socket, next) => {
 
 /* -------------------- TIMER INTERVAL TRACKER -------------------- */
 const activeTimers = {};
+const userSessions = {}; // track start times locally
 
 /* -------------------- SOCKET EVENTS -------------------- */
 io.on("connection", (socket) => {
@@ -121,7 +122,7 @@ io.on("connection", (socket) => {
     // Store data directly on the socket for reliable retrieval
     socket.data.userId = userId;
     socket.data.username = username;
-    
+
     socket.join(roomId);
 
     // HELPER: Safely fetch users in a room (prevents crash on Redis timeout)
@@ -129,7 +130,7 @@ io.on("connection", (socket) => {
       try {
         const connectedSockets = await io.in(targetRoomId).fetchSockets();
         const uniqueUsersMap = new Map();
-        
+
         connectedSockets.forEach((s) => {
           if (s.data.userId && !uniqueUsersMap.has(s.data.userId)) {
             uniqueUsersMap.set(s.data.userId, {
@@ -141,7 +142,10 @@ io.on("connection", (socket) => {
         });
         return Array.from(uniqueUsersMap.values());
       } catch (err) {
-        console.error("fetchSockets timeout or error, using local fallback:", err.message);
+        console.error(
+          "fetchSockets timeout or error, using local fallback:",
+          err.message,
+        );
         // Fallback to local server sockets only if Redis adapter times out
         const localSockets = await io.of("/").in(targetRoomId).allSockets();
         const users = [];
@@ -161,18 +165,33 @@ io.on("connection", (socket) => {
 
     // Check if this USER (any tab) is already in the room
     const currentUsers = await getRoomUsers(roomId);
-    const isUserAlreadyIn = currentUsers.some(u => u.userId === userId && u.socketId !== socket.id);
+    const isUserAlreadyIn = currentUsers.some(
+      (u) => u.userId === userId && u.socketId !== socket.id,
+    );
 
     // Only notify if this is the first tab for this user
     if (!isUserAlreadyIn) {
       io.to(roomId).emit("notify", {
+        id: Date.now(),
         type: "user_joined",
         message: `${username} joined the room`,
+        timestamp: new Date().toISOString(),
       });
     }
 
     console.log(`Emitting unique users to ${roomId}:`, currentUsers);
     io.to(roomId).emit("update_users", currentUsers);
+
+    // Sync timer state on join
+    const timerKey = `room:${roomId}:timer`;
+    const timerData = await pubClient.get(timerKey);
+    if (timerData) {
+      const data = JSON.parse(timerData);
+      socket.emit("timer_update", { 
+        ...data, 
+        isPaused: activeTimers[roomId] ? false : true 
+      });
+    }
   });
 
   /* ---------- LEAVE ROOM ---------- */
@@ -236,26 +255,65 @@ io.on("connection", (socket) => {
   socket.on("start_timer", async ({ roomId, duration }) => {
     const key = `room:${roomId}:timer`;
     const existing = await pubClient.get(key);
-    if (existing && activeTimers[roomId]) return;
+    
+    let timeLeft;
+    let initialTime;
 
-    let timeLeft = duration || 25 * 60;
-    await pubClient.set(key, JSON.stringify({ timeLeft, initialTime: timeLeft }));
+    if (existing) {
+      const data = JSON.parse(existing);
+      // If there's an existing timer, resume from where it left off
+      timeLeft = data.timeLeft;
+      initialTime = data.initialTime;
+      
+      // If the timer was already running, don't start another interval
+      if (activeTimers[roomId]) return;
+    } else {
+      // New timer
+      timeLeft = duration || 25 * 60;
+      initialTime = timeLeft;
+    }
 
-    io.to(roomId).emit("notify", { type: "timer", message: "Timer started" });
+    await pubClient.set(key, JSON.stringify({ timeLeft, initialTime }));
+
+    // Tracking user focus session
+    const userId = socket.userId;
+    const sessionKey = `session:${roomId}:${userId}`;
+    const startTime = Date.now();
+    userSessions[userId] = startTime;
+    await pubClient.set(sessionKey, startTime);
+
+    io.to(roomId).emit("notify", { type: "timer", message: existing ? "Timer resumed" : "Timer started" });
+
+    // Sync immediately
+    io.to(roomId).emit("timer_update", { timeLeft, initialTime, isPaused: false });
 
     activeTimers[roomId] = setInterval(async () => {
+      // 1. Check if we've been cleared mid-tick (prevents race condition)
+      if (!activeTimers[roomId]) return;
+
       const dataStr = await pubClient.get(key);
-      if (!dataStr) return;
+      if (!dataStr) {
+        clearInterval(activeTimers[roomId]);
+        delete activeTimers[roomId];
+        return;
+      }
       const data = JSON.parse(dataStr);
 
       data.timeLeft--;
-      await pubClient.set(key, JSON.stringify(data));
-      io.to(roomId).emit("timer_update", data);
-
+      
       if (data.timeLeft <= 0) {
+        data.timeLeft = 0;
+        await pubClient.del(key);
+        io.to(roomId).emit("timer_update", { ...data, isPaused: true });
         clearInterval(activeTimers[roomId]);
         delete activeTimers[roomId];
-        await pubClient.del(key);
+        io.to(roomId).emit("notify", { type: "timer", message: "Time is up!" });
+      } else {
+        await pubClient.set(key, JSON.stringify(data));
+        // Only emit if we are still active (prevent emitting isPaused: false right after a pause)
+        if (activeTimers[roomId]) {
+          io.to(roomId).emit("timer_update", { ...data, isPaused: false });
+        }
       }
     }, 1000);
   });
@@ -265,6 +323,32 @@ io.on("connection", (socket) => {
       clearInterval(activeTimers[roomId]);
       delete activeTimers[roomId];
     }
+
+    const key = `room:${roomId}:timer`;
+    const dataStr = await pubClient.get(key);
+    if (dataStr) {
+      const data = JSON.parse(dataStr);
+      // Emit update so frontend knows it's paused
+      io.to(roomId).emit("timer_update", { ...data, isPaused: true });
+    }
+
+    const userId = socket.userId;
+    const sessionKey = `session:${roomId}:${userId}`;
+
+    const startTime = await pubClient.get(sessionKey);
+
+    if (startTime) {
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+
+      await pubClient.del(sessionKey);
+
+      io.to(roomId).emit("notify", {
+        id: Date.now(),
+        type: "focus",
+        message: `${socket.user.username} focused for ${duration}s`,
+      });
+    }
+
     io.to(roomId).emit("notify", { type: "timer", message: "Timer paused" });
   });
 
@@ -273,6 +357,28 @@ io.on("connection", (socket) => {
       clearInterval(activeTimers[roomId]);
       delete activeTimers[roomId];
     }
+
+    const key = `room:${roomId}:timer`;
+    await pubClient.del(key);
+    io.to(roomId).emit("timer_update", { timeLeft: 0, initialTime: 0, isPaused: true });
+
+    const userId = socket.userId;
+    const sessionKey = `session:${roomId}:${userId}`;
+
+    const startTime = await pubClient.get(sessionKey);
+
+    if (startTime) {
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+
+      await pubClient.del(sessionKey);
+
+      io.to(roomId).emit("notify", {
+        id: Date.now(),
+        type: "focus",
+        message: `${socket.user.username} completed ${duration}s focus`,
+      });
+    }
+
     await pubClient.del(`room:${roomId}:timer`);
     io.to(roomId).emit("timer_update", { timeLeft: 0, initialTime: 1 });
     io.to(roomId).emit("notify", { type: "timer", message: "Timer reset" });
@@ -284,8 +390,10 @@ io.on("connection", (socket) => {
     const userId = socket.userId;
 
     if (roomId && userId) {
-      console.log(`User ${socket.user.username} disconnected from room: ${roomId}`);
-      
+      console.log(
+        `User ${socket.user.username} disconnected from room: ${roomId}`,
+      );
+
       // Re-use the safe helper
       const getRoomUsers = async (targetRoomId) => {
         try {
