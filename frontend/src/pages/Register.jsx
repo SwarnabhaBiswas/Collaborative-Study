@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 
 function Register() {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ function Register() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(form),
-        }
+        },
       );
 
       const data = await res.json();
@@ -47,10 +48,8 @@ function Register() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-6xl bg-secondary rounded-2xl overflow-hidden flex flex-col md:flex-row">
-
         {/* LEFT SIDE */}
         <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col justify-center">
-
           {/* Logo */}
           <div className="flex items-center gap-2 mb-6 justify-center md:justify-start">
             <img src="/logo.png" className="w-14 md:w-20 h-auto" />
@@ -106,6 +105,38 @@ function Register() {
               Login
             </span>
           </p>
+          <div className="mt-4 flex justify-center">
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                try {
+                  const res = await fetch(
+                    `${import.meta.env.VITE_API_URL}/api/auth/google`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        credential: credentialResponse.credential,
+                      }),
+                    },
+                  );
+
+                  const data = await res.json();
+
+                  if (res.ok) {
+                    login(data);
+                    navigate("/");
+                  } else {
+                    alert(data.message);
+                  }
+                } catch (err) {
+                  console.log(err);
+                }
+              }}
+              onError={() => console.log("Google Register Failed")}
+            />
+          </div>
         </div>
 
         {/* RIGHT SIDE */}

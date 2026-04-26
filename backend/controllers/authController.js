@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { registerSchema, loginSchema } from "../utils/validator.js";
+import {OAuth2Client} from "google-auth-library";
 
 //REGISTER
 export const register = async (req, res) => {
@@ -91,3 +92,56 @@ export const login = async (req, res) => {
     return res.status(500).json({ message: e.message });
   }
 };
+
+const client= new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const googleAuth= async(req,res)=>{
+  try{
+    const {credential} =req.body;
+    if(!credential){
+      return res.status(400).json({
+        message:"No credential provided"
+      })
+    }
+
+    const ticket=await client.verifyIdToken({
+      idToken:credential,
+      audience:process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload=ticket.getPayload();
+
+    const {email,name}=payload;
+
+    let user= await User.findOne({email});
+
+    if(!user){
+      user = await User.create({
+        email,
+        username:name,
+        password:"google auth"
+      })
+    }
+
+    const token= jwt.sign(
+      {id:user._id,username:user.username},
+      process.env.JWT_SECRET,
+      {expiresIn:"7d"}
+    );
+
+    return res.json({
+      message:"Google auth successful",
+      token,
+      user:{
+        id:user._id,
+        username:user.username,
+        email:user.email
+      },
+    });
+  }
+  catch(e){
+    return res.status(500).json({
+      message:e.message
+    })
+  }
+}
