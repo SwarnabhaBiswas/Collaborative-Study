@@ -15,16 +15,18 @@ import roomRoutes from "./routes/roomRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 
 import Message from "./models/Message.js";
+import morgan from "morgan";
 
 dotenv.config();
 
 const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-  : [];
+? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+: [];
 
 const app = express();
 
 /* -------------------- MIDDLEWARE -------------------- */
+app.use(morgan("dev"));//for logging
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -54,7 +56,7 @@ mongoose
 
 /* -------------------- REDIS -------------------- */
 const pubClient = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
+  url: process.env.REDIS_URL,
 });
 
 const subClient = pubClient.duplicate();
