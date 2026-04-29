@@ -138,7 +138,7 @@ function Dashboard() {
           {/* Create */}
           <button
             onClick={handleCreateRoom}
-            className="px-6 py-3 rounded-full bg-primary text-background font-semibold hover:opacity-80 transition active:scale-95"
+            className="cursor-pointer px-6 py-3 rounded-full bg-primary text-background font-semibold hover:opacity-80 transition active:scale-95"
           >
             Create Room
           </button>
@@ -154,7 +154,7 @@ function Dashboard() {
             />
             <button
               onClick={handleJoinRoom}
-              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition text-sm active:scale-95"
+              className="cursor-pointer px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition text-sm active:scale-95"
             >
               Join
             </button>
@@ -164,7 +164,7 @@ function Dashboard() {
         {/* My Rooms */}
         <button
           onClick={() => setShowModal(true)}
-          className="bg-transparent border border-white/10 px-6 py-2 rounded-full text-primary mt-4 backdrop-blur-md hover:opacity-80 active:scale-95"
+          className="bg-transparent cursor-pointer border border-white/10 px-6 py-2 rounded-full text-primary mt-4 backdrop-blur-md hover:opacity-80 active:scale-95"
         >
           My Rooms
         </button>
