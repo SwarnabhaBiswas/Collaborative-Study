@@ -284,7 +284,11 @@ io.on("connection", (socket) => {
     userSessions[userId] = startTime;
     await pubClient.set(sessionKey, startTime);
 
-    io.to(roomId).emit("notify", { type: "timer", message: existing ? "Timer resumed" : "Timer started" });
+    io.to(roomId).emit("notify", {
+      id: Date.now(),
+      type: "timer",
+      message: existing ? "Timer resumed" : "Timer started",
+    });
 
     // Sync immediately
     io.to(roomId).emit("timer_update", { timeLeft, initialTime, isPaused: false });
@@ -309,7 +313,11 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("timer_update", { ...data, isPaused: true });
         clearInterval(activeTimers[roomId]);
         delete activeTimers[roomId];
-        io.to(roomId).emit("notify", { type: "timer", message: "Time is up!" });
+        io.to(roomId).emit("notify", {
+          id: Date.now(),
+          type: "timer",
+          message: "Time is up!",
+        });
       } else {
         await pubClient.set(key, JSON.stringify(data));
         // Only emit if we are still active (prevent emitting isPaused: false right after a pause)
@@ -351,7 +359,11 @@ io.on("connection", (socket) => {
       });
     }
 
-    io.to(roomId).emit("notify", { type: "timer", message: "Timer paused" });
+    io.to(roomId).emit("notify", {
+      id: Date.now(),
+      type: "timer",
+      message: "Timer paused",
+    });
   });
 
   socket.on("stop_timer", async (roomId) => {
@@ -383,7 +395,11 @@ io.on("connection", (socket) => {
 
     await pubClient.del(`room:${roomId}:timer`);
     io.to(roomId).emit("timer_update", { timeLeft: 0, initialTime: 1 });
-    io.to(roomId).emit("notify", { type: "timer", message: "Timer reset" });
+    io.to(roomId).emit("notify", {
+      id: Date.now(),
+      type: "timer",
+      message: "Timer reset",
+    });
   });
 
   /* ---------- DISCONNECT ---------- */
