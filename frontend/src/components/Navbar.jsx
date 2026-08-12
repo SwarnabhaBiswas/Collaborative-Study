@@ -12,7 +12,7 @@ const Navbar = ({ logout }) => {
       >
         {/* LEFT */}
         <div 
-        onClick={navigate("/")}
+        onClick={() => navigate("/")}
         className="flex items-center gap-3 cursor-pointer">
           <img src="/logo.png" className="w-15 h-auto mt-[-10px]" />
           <span className="text-primary font-bold text-2xl mt-1">SYNC</span>

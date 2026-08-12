@@ -301,9 +301,8 @@ function Room() {
           {Array.isArray(chat) &&
             chat.map((msg, index) => (
               <Message
-                key={index}
+                key={msg._id || index}
                 msg={msg}
-                id={index}
                 currentUser={currentUserId}
               />
             ))}

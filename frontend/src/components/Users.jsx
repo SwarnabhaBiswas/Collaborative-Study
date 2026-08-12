@@ -7,9 +7,9 @@ const Users = ({ users, socket, currentUserId }) => {
         Active Users
       </p>
 
-      {Array.isArray(users) && users.map((user, index) => (
+      {Array.isArray(users) && users.map((user) => (
         <div
-          key={index}
+          key={user.userId}
           className="flex items-center gap-3 p-3 bg-tertiary rounded-2xl text-primary"
         >
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
