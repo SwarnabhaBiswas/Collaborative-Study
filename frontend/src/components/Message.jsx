@@ -1,11 +1,10 @@
 import React from "react";
 
-const Message = ({ msg, id, currentUser }) => {
+const Message = ({ msg, currentUser }) => {
   const isMe = msg.senderId === currentUser;
 
   return (
     <div
-      key={id}
       className={`flex flex-col mb-3 px-2 ${
         isMe ? "items-end" : "items-start"
       }`}
