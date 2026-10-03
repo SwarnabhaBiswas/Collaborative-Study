@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+import { fetchWithTimeout, getApiUrl } from "../utils/api";
 
 function Login() {
   const { login } = useAuth();
@@ -18,16 +19,13 @@ function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
+      const res = await fetchWithTimeout(getApiUrl("/api/auth/login"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(form),
+      });
 
       const data = await res.json();
 
@@ -39,6 +37,7 @@ function Login() {
       }
     } catch (e) {
       console.log(e);
+      alert(e.name === "AbortError" ? "Login request timed out" : e.message);
     } finally {
       setLoading(false);
     }
@@ -102,8 +101,8 @@ function Login() {
             <GoogleLogin
               onSuccess={async (credentialResponse) => {
                 try {
-                  const res = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/auth/google`,
+                  const res = await fetchWithTimeout(
+                    getApiUrl("/api/auth/google"),
                     {
                       method: "POST",
                       headers: {
@@ -125,6 +124,11 @@ function Login() {
                   }
                 } catch (err) {
                   console.log(err);
+                  alert(
+                    err.name === "AbortError"
+                      ? "Google login request timed out"
+                      : err.message
+                  );
                 }
               }}
               onError={() => console.log("Google Login Failed")}

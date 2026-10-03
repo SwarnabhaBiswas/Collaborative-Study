@@ -20,17 +20,20 @@ import { completeStudySession } from "./services/analyticsService.js";
 dotenv.config();
 
 const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+  ? process.env.CORS_ORIGINS.split(",").map((origin) =>
+      origin.trim().replace(/\/$/, "")
+    )
   : [];
 
 const app = express();
+mongoose.set("bufferCommands", false);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         return callback(null, true);
       }
 
@@ -50,10 +53,17 @@ const limiter = rateLimit({
 
 app.use("/api/auth", limiter);
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("Database connected"))
-  .catch((err) => console.log(err));
+const connectDatabase = async () => {
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is missing");
+  }
+
+  await mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
+
+  console.log("Database connected");
+};
 
 const pubClient = createClient({
   url: process.env.REDIS_URL,
@@ -62,14 +72,17 @@ const pubClient = createClient({
 const subClient = pubClient.duplicate();
 let redisConnected = false;
 
-try {
+const connectRedis = async () => {
+  if (!process.env.REDIS_URL) {
+    console.log("REDIS_URL is missing, starting without Redis adapter");
+    return;
+  }
+
   await pubClient.connect();
   await subClient.connect();
   redisConnected = true;
   console.log("Redis connected");
-} catch (err) {
-  console.error("Redis connection failed, starting without Redis adapter:", err.message);
-}
+};
 
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
@@ -88,10 +101,6 @@ const io = new Server(server, {
     credentials: true,
   },
 });
-
-if (redisConnected) {
-  io.adapter(createAdapter(pubClient, subClient));
-}
 
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
@@ -338,6 +347,25 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log("Server listening on PORT", PORT);
-});
+try {
+  await connectDatabase();
+
+  try {
+    await connectRedis();
+    if (redisConnected) {
+      io.adapter(createAdapter(pubClient, subClient));
+    }
+  } catch (err) {
+    console.error(
+      "Redis connection failed, starting without Redis adapter:",
+      err.message
+    );
+  }
+
+  server.listen(PORT, () => {
+    console.log("Server listening on PORT", PORT);
+  });
+} catch (err) {
+  console.error("Server startup failed:", err.message);
+  process.exit(1);
+}

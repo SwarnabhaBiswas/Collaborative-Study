@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+import { fetchWithTimeout, getApiUrl } from "../utils/api";
 
 function Register() {
   const navigate = useNavigate();
@@ -19,16 +20,13 @@ function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
+      const res = await fetchWithTimeout(getApiUrl("/api/auth/register"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(form),
+      });
 
       const data = await res.json();
 
@@ -40,6 +38,9 @@ function Register() {
       }
     } catch (err) {
       console.log(err);
+      alert(
+        err.name === "AbortError" ? "Register request timed out" : err.message
+      );
     } finally {
       setLoading(false);
     }
@@ -109,8 +110,8 @@ function Register() {
             <GoogleLogin
               onSuccess={async (credentialResponse) => {
                 try {
-                  const res = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/auth/google`,
+                  const res = await fetchWithTimeout(
+                    getApiUrl("/api/auth/google"),
                     {
                       method: "POST",
                       headers: {
@@ -132,6 +133,11 @@ function Register() {
                   }
                 } catch (err) {
                   console.log(err);
+                  alert(
+                    err.name === "AbortError"
+                      ? "Google register request timed out"
+                      : err.message
+                  );
                 }
               }}
               onError={() => console.log("Google Register Failed")}
