@@ -77,15 +77,7 @@ function MyRoomsModal({
                 room.createdBy?._id?.toString?.() ||
                 room.createdBy?.toString?.();
 
-              const roomUserIds = (room.users || []).map((id) =>
-                typeof id === "string"
-                  ? id
-                  : id?._id?.toString?.() || id?.toString?.()
-              );
-
               const isCreator = createdById === user?.id;
-              const isMember = roomUserIds.includes(user?.id);
-              const canDelete = isCreator || isMember;
 
               return (
                 <div
@@ -133,8 +125,8 @@ function MyRoomsModal({
                       Join
                     </button>
 
-                    {/* DELETE (room members) */}
-                    {canDelete && (
+                    {/* DELETE (creator only) */}
+                    {isCreator && (
                       <button
                         onClick={async () => {
                           const result = await Swal.fire({
