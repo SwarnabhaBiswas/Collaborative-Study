@@ -73,7 +73,11 @@ function MyRoomsModal({
             <p className="text-gray-400 text-sm">No rooms found</p>
           ) : (
             filteredRooms.map((room) => {
-              const isCreator = user?.id === room.createdBy;
+              const createdById =
+                room.createdBy?._id?.toString?.() ||
+                room.createdBy?.toString?.();
+
+              const isCreator = createdById === user?.id;
 
               return (
                 <div
@@ -121,7 +125,7 @@ function MyRoomsModal({
                       Join
                     </button>
 
-                    {/* DELETE (only creator) */}
+                    {/* DELETE (creator only) */}
                     {isCreator && (
                       <button
                         onClick={async () => {

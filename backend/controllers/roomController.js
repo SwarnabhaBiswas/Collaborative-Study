@@ -94,7 +94,6 @@ export const deleteRoom = async (req, res) => {
       });
     }
 
-    // only creator can delete
     if (room.createdBy.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
