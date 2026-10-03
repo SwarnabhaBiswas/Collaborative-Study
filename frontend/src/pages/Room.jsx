@@ -68,7 +68,9 @@ function Room() {
     socket.emit("join_room", { roomId });
 
     return () => {
-      socket.emit("leave_room", { roomId });
+      if (roomId) {
+        socket.emit("leave_room", { roomId });
+      }
     };
   }, [roomId, user]);
 

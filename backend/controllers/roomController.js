@@ -94,8 +94,8 @@ export const deleteRoom = async (req, res) => {
       });
     }
 
-    // only creator can delete
-    if (room.createdBy.toString() !== req.user.id) {
+    // allow any room member to delete the room
+    if (!room.users.some((id) => id.toString() === req.user.id)) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized",

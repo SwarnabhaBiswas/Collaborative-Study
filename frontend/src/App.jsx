@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Room from "./pages/Room";
+import Analytics from "./pages/Analytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { socket } from "./socket";
 
@@ -44,6 +45,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Room />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
               </ProtectedRoute>
             }
           />
